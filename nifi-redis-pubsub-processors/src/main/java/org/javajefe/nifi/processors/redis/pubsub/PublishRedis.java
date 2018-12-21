@@ -31,10 +31,10 @@ import java.util.concurrent.TimeUnit;
 @InputRequirement(InputRequirement.Requirement.INPUT_REQUIRED)
 public class PublishRedis extends AbstractRedisProcessor {
 
-    private static final AllowableValue PUBLISH_MODE = new AllowableValue("PUBLISH");
-    private static final AllowableValue LPUSH_MODE = new AllowableValue("LPUSH");
-    private static final AllowableValue RPUSH_MODE = new AllowableValue("RPUSH");
-    private static final PropertyDescriptor QUEUE_MODE = new PropertyDescriptor.Builder()
+    public static final AllowableValue PUBLISH_MODE = new AllowableValue("PUBLISH");
+    public static final AllowableValue LPUSH_MODE = new AllowableValue("LPUSH");
+    public static final AllowableValue RPUSH_MODE = new AllowableValue("RPUSH");
+    public static final PropertyDescriptor QUEUE_MODE = new PropertyDescriptor.Builder()
             .name("Queue Mode")
             .description("Queue implementation mode (Pub/Sub or List implementation)")
             .required(true)
@@ -42,7 +42,7 @@ public class PublishRedis extends AbstractRedisProcessor {
             .expressionLanguageSupported(ExpressionLanguageScope.NONE)
             .build();
 
-    private static final PropertyDescriptor CHANNEL_OR_LIST = new PropertyDescriptor.Builder()
+    public static final PropertyDescriptor CHANNEL_OR_LIST = new PropertyDescriptor.Builder()
             .name("Channel/Key Name")
             .description("Channel name (for PUBLISH mode) or Key name the list is stored (for LPUSH and RPUSH modes)")
             .required(true)

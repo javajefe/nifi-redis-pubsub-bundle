@@ -22,11 +22,19 @@
             <artifactId>nifi-utils</artifactId>
             <version>1.8.0</version>
         </dependency>
+        <!-- Provided dependencies -->
         <dependency>
             <groupId>org.apache.nifi</groupId>
             <artifactId>nifi-redis-service-api</artifactId>
             <version>1.8.0</version>
             <scope>provided</scope>
+        </dependency>
+        <!-- Test dependencies -->
+        <dependency>
+            <groupId>com.github.kstyrc</groupId>
+            <artifactId>embedded-redis</artifactId>
+            <version>0.6</version>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.nifi</groupId>
@@ -42,6 +50,12 @@
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.nifi</groupId>
+            <artifactId>nifi-redis-extensions</artifactId>
+            <version>1.8.0</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
