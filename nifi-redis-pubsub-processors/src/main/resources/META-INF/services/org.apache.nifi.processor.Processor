@@ -1,0 +1,2 @@
+org.javajefe.nifi.processors.redis.pubsub.PublishRedis
+org.javajefe.nifi.processors.redis.pubsub.SubscribeRedis
