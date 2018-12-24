@@ -38,10 +38,10 @@ import java.util.concurrent.atomic.AtomicReference;
 @InputRequirement(InputRequirement.Requirement.INPUT_FORBIDDEN)
 public class SubscribeRedis extends AbstractRedisProcessor {
 
-    private static final AllowableValue SUBSCRIBE_MODE = new AllowableValue("SUBSCRIBE");
-    private static final AllowableValue LPOP_MODE = new AllowableValue("LPOP");
-    private static final AllowableValue RPOP_MODE = new AllowableValue("RPOP");
-    private static final PropertyDescriptor QUEUE_MODE = new PropertyDescriptor.Builder()
+    public static final AllowableValue SUBSCRIBE_MODE = new AllowableValue("SUBSCRIBE");
+    public static final AllowableValue LPOP_MODE = new AllowableValue("LPOP");
+    public static final AllowableValue RPOP_MODE = new AllowableValue("RPOP");
+    public static final PropertyDescriptor QUEUE_MODE = new PropertyDescriptor.Builder()
             .name("Queue Mode")
             .description("Queue implementation mode (Pub/Sub or List implementation)")
             .required(true)
@@ -49,7 +49,7 @@ public class SubscribeRedis extends AbstractRedisProcessor {
             .expressionLanguageSupported(ExpressionLanguageScope.NONE)
             .build();
 
-    private static final PropertyDescriptor CHANNEL_OR_LIST = new PropertyDescriptor.Builder()
+    public static final PropertyDescriptor CHANNEL_OR_LIST = new PropertyDescriptor.Builder()
             .name("Channel/Key Name")
             .description("Channel name (for SUBSCRIBE mode) or Key name the list is stored (for LPOP and RPOP modes)")
             .required(true)

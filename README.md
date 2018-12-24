@@ -19,7 +19,11 @@ mvn install
 Copy the NAR into your NiFi directory (usually `/opt/nifi/nifi-current/lib`). \
 Restart NiFi.
 
+To run all integration tests use
+```
+mvn -P integration-tests verify
+```
+
 ### TODO
-- unit and integration tests
 - batch processing
 - Redis Streams support
