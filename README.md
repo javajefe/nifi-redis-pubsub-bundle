@@ -24,6 +24,12 @@ To run all integration tests use
 mvn -P integration-tests verify
 ```
 
+### Release notes
+##### v 0.0.2
+Improved xPUSH operation performance by sending bulk of values per call. \
+PUBLISH performance stays the same as far as Redis does not accepts nultiple values in the command.
+##### v 0.0.1
+First working release
+
 ### TODO
-- batch processing
-- Redis Streams support
+- Redis Streams support (now it is tricky to implement because Jedis still does not have streams support)

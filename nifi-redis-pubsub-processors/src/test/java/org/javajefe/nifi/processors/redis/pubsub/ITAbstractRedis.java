@@ -23,7 +23,7 @@ import static java.util.stream.Collectors.toList;
  */
 public abstract class ITAbstractRedis {
 
-    protected static final String KEY = "key";
+    protected static final String KEY = "redis.pubsub.it-test.key";
     protected TestRunner testRunner;
     protected Jedis jedis;
     protected List<String> messages;
@@ -44,6 +44,7 @@ public abstract class ITAbstractRedis {
         testRunner.enableControllerService(redisConnectionPool);
 
         this.jedis = new Jedis(redisHost, redisPort);
+        jedis.del(KEY);
     }
 
     private int getAvailablePort() throws IOException {
@@ -56,16 +57,16 @@ public abstract class ITAbstractRedis {
     }
 
     protected void teardown() throws IOException {
-        testRunner.shutdown();
-        if (redisConnectionPool != null) {
-            redisConnectionPool.onDisabled();
-        }
         if (jedis != null && jedis.isConnected()) {
             jedis.close();
+        }
+        if (redisConnectionPool != null) {
+            redisConnectionPool.onDisabled();
         }
         if (redisServer != null) {
             redisServer.stop();
         }
+        testRunner.shutdown();
     }
 
     protected void generateMessages(int number) {

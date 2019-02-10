@@ -9,9 +9,11 @@ import org.apache.nifi.components.AllowableValue;
 import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.expression.ExpressionLanguageScope;
 import org.apache.nifi.flowfile.FlowFile;
+import org.apache.nifi.processor.DataUnit;
 import org.apache.nifi.processor.ProcessContext;
 import org.apache.nifi.processor.ProcessSession;
 import org.apache.nifi.processor.exception.ProcessException;
+import org.apache.nifi.processor.util.FlowFileFilters;
 import org.apache.nifi.processor.util.StandardValidators;
 import org.apache.nifi.redis.RedisConnectionPool;
 import org.javajefe.nifi.processors.redis.pubsub.util.RedisAction;
@@ -19,6 +21,9 @@ import org.javajefe.nifi.processors.redis.pubsub.util.RedisAction;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -51,44 +56,88 @@ public class PublishRedis extends AbstractRedisProcessor {
             .build();
 
     public void onTrigger(ProcessContext context, ProcessSession session) throws ProcessException, IOException {
-        final FlowFile flowFile = session.get();
-        if ( flowFile == null ) {
+
+        final List<FlowFile> flowFiles = session.get(FlowFileFilters.newSizeBasedFilter(100, DataUnit.KB, 10000));
+        if (flowFiles.isEmpty()) {
             return;
         }
 
-        final long start = System.nanoTime();
+        // Send each FlowFile to Redis
+        byte[] channelOrKeyBytes = channelOrKey.getBytes(StandardCharsets.UTF_8);
 
-        final ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        session.exportTo(flowFile, baos);
-        final byte[] flowFileContent = baos.toByteArray();
-        final RedisAction<Void> action = redisConnection -> {
-            switch (mode) {
-                case "PUBLISH":
-                    redisConnection.publish(channelOrKey.getBytes(StandardCharsets.UTF_8), flowFileContent);
-                    break;
-                case "LPUSH":
-                    redisConnection.listCommands()
-                            .lPush(channelOrKey.getBytes(StandardCharsets.UTF_8), flowFileContent);
-                    break;
-                case "RPUSH":
-                    redisConnection.listCommands()
-                            .rPush(channelOrKey.getBytes(StandardCharsets.UTF_8), flowFileContent);
-                    break;
-                default:
-                    throw new UnsupportedOperationException("Queue mode " + mode + " is not supported");
-            }
-            return null;
-        };
-        withConnection(action::execute);
+        switch (mode) {
+            case "PUBLISH":
+                final Iterator<FlowFile> itr = flowFiles.iterator();
+                while (itr.hasNext()) {
+                    final FlowFile flowFile = itr.next();
 
-        getLogger().debug("Successfully published message to Redis for {}", new Object[]{flowFile});
-        final long transmissionMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start);
-        session.getProvenanceReporter().send(flowFile, channelOrKey, transmissionMillis);
-        session.transfer(flowFile, REL_SUCCESS);
-        session.commit();
+                    if (!isScheduled()) {
+                        // If stopped, re-queue FlowFile instead of sending it
+                        session.transfer(flowFile);
+                        continue;
+                    }
+
+                    executePublish(session, channelOrKeyBytes, Collections.singletonList(flowFile));
+                }
+                break;
+            default:
+                executePublish(session, channelOrKeyBytes, flowFiles);
+                break;
+        }
 	}
 
-    @OnScheduled
+	private byte[] serializeFlowFile(ProcessSession session, FlowFile flowFile) {
+        byte[] result = null;
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        session.exportTo(flowFile, baos);
+        byte[] flowFileContent = baos.toByteArray();
+        result = flowFileContent;
+        return result;
+    }
+
+	private void executePublish(ProcessSession session, byte[] channelOrKeyBytes, List<FlowFile> flowFiles) {
+        final long start = System.nanoTime();
+        byte[][] flowFilesContent = flowFiles.stream()
+                .map(flowFile -> serializeFlowFile(session, flowFile))
+                .toArray(byte[][]::new);
+
+        try {
+            final RedisAction<Void> action = redisConnection -> {
+                switch (mode) {
+                    case "PUBLISH":
+                        if (flowFilesContent.length != 1) {
+                            throw new IllegalStateException("PUBLISH command accepts only one value");
+                        }
+                        redisConnection.publish(channelOrKeyBytes, flowFilesContent[0]);
+                        break;
+                    case "LPUSH":
+                        redisConnection.listCommands().lPush(channelOrKeyBytes, flowFilesContent);
+                        break;
+                    case "RPUSH":
+                        redisConnection.listCommands().rPush(channelOrKeyBytes, flowFilesContent);
+                        break;
+                    default:
+                        throw new UnsupportedOperationException("Queue mode " + mode + " is not supported");
+                }
+                return null;
+            };
+            withConnection(action::execute);
+            final long transmissionMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start);
+
+            for (FlowFile flowFile: flowFiles) {
+                getLogger().debug("Successfully published message to Redis for {}", new Object[]{flowFile});
+                session.getProvenanceReporter().send(flowFile, channelOrKey, transmissionMillis);
+                session.transfer(flowFile, REL_SUCCESS);
+            }
+        } catch (Exception ex) {
+            for (FlowFile flowFile: flowFiles) {
+                getLogger().info("Failed to publish message to Redis for {}", new Object[]{flowFile});
+                session.transfer(flowFile, REL_FAILURE);
+            }
+        }
+    }
+
+	@OnScheduled
     public void startPublishing(final ProcessContext context) {
         redisConnectionPool = context.getProperty(REDIS_CONNECTION_POOL)
                 .asControllerService(RedisConnectionPool.class);
